@@ -70,7 +70,7 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_PG_PASSWORD_FILE: /run/secrets/kong_postgres_password
       KONG_LUA_PACKAGE_PATH: /opt/?.lua;/opt/?/init.lua;;
-      KONG_PLUGINS: bundled,oidc
+      KONG_PLUGINS: bundled,oidc,xml-json-transformer
     secrets:
       - kong_postgres_password
     networks:
