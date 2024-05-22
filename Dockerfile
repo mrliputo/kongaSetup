@@ -3,6 +3,7 @@ FROM kong/kong:3.4.0
 USER root
 
 LABEL authors="Cristian Chiru <cristian.chiru@revomatico.com>"
+RUN rm -rf ~/.luarocks
 
 ENV DEV_PACKAGES="libssl-dev make gcc git curl unzip" \
     LUA_BASE_DIR="/usr/local/share/lua/5.1" \
@@ -14,6 +15,7 @@ ENV DEV_PACKAGES="libssl-dev make gcc git curl unzip" \
 RUN set -ex \
     && apt-get update \
     && apt-get install --no-install-recommends --no-install-suggests -y $DEV_PACKAGES \
+    && apt-get install -y git \
     ## Install plugins
     # Download ngx-distributed-shm dshm library
     && curl -sL https://raw.githubusercontent.com/grrolland/ngx-distributed-shm/${NGX_DISTRIBUTED_SHM_VER}/lua/dshm.lua > ${LUA_BASE_DIR}/resty/dshm.lua \
@@ -22,6 +24,10 @@ RUN set -ex \
     # Add Pluggable Compressors dependencies
     && luarocks install lua-ffi-zlib \
     && luarocks install penlight \
+#    && curl -sL https://raw.githubusercontent.com/mrliputo/kong-plugin-xml-json-transformer/v0.2.0-1/kong-plugin-xml-json-transformer-0.2.0-1.rockspec | \
+#	sed -E -e 's/(tag =)[^,]+/\1 "'v0.2.0-1'"/' | \
+#	tee kong-plugin-xml-json-transformer-0.2.0-1.rockspec \
+ #   && luarocks build kong-plugin-xml-json-transformer-0.2.0-1.rockspec \
     # Build kong-oidc from forked repo because is not keeping up with lua-resty-openidc
     && curl -sL https://raw.githubusercontent.com/revomatico/kong-oidc/v${KONG_PLUGIN_OIDC_VER}/kong-oidc.rockspec | \
         sed -E -e 's/(tag =)[^,]+/\1 "'v${KONG_PLUGIN_OIDC_VER}'"/' -e "s/(lua-resty-openidc ~>)[^\"]+/\1 ${LUA_RESTY_OIDC_VER}/" | \
@@ -138,6 +144,7 @@ x_oidc_cache_introspection_size = 128k\n\
 x_nolog_list_file =\n\
 \n\
 " "$TPL" \
+    && luarocks install xml2lua 1.4 \
     ## Cleanup
     && rm -fr *.rock* \
     # && rm -f /usr/local/openresty/nginx/modules/ngx_wasm_module.so \
@@ -148,4 +155,29 @@ x_nolog_list_file =\n\
     ## Create kong and working directory (https://github.com/Kong/kong/issues/2690)
     && mkdir -p /usr/local/kong \
     && chown -R kong:`id -gn kong` /usr/local/kong
+#RUN luarocks install kong-plugin-xml-to-json
+ENV KONG_PLUGINS_DIR /usr/local/share/lua/5.1/kong/plugins
+RUN mkdir -p $KONG_PLUGINS_DIR/xml-json-transformer
+RUN set -ex \
+    && apt-get update \
+    && apt-get install --no-install-recommends --no-install-suggests -y $DEV_PACKAGES \
+    && apt-get install -y git 
+# Clone plugin dari GitHub
+# Clone plugin dari GitHub
+RUN git clone https://github.com/mrliputo/kong-plugin-xml-json-transformer.git /tmp/kong-plugin-xml-json-transformer \
+    && cd tmp \
+#    && cd .. \
+#    && cd tmp \
+    && cd kong-plugin-xml-json-transformer \
+    && git pull \
+    && luarocks build kong-plugin-xml-json-transformer-0.2.0-1.rockspec \
+    && cd .. \
+    && cd ..
+    
+
+# Pindahkan plugin ke dalam direktori plugin Kong
+#RUN cp -a /tmp/kong-plugin-xml-json-transformer/kong/plugins/xml-json-transformer/* $KONG_PLUGINS_DIR/xml-json-transformer/
+
+# Hapus sumber kode yang tidak lagi diperlukan
+RUN rm -rf /tmp/kong-plugin-xml-json-transformer
 USER kong
