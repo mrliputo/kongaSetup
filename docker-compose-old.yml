@@ -50,9 +50,7 @@ services:
 
   kong:
     container_name: kong
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: "${KONG_DOCKER_TAG:-kong:latest}"
     user: "${KONG_USER:-kong}"
     depends_on:
       - db
@@ -69,8 +67,6 @@ services:
       KONG_PROXY_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_PG_PASSWORD_FILE: /run/secrets/kong_postgres_password
-      KONG_LUA_PACKAGE_PATH: /opt/?.lua;/opt/?/init.lua;;
-      KONG_PLUGINS: bundled,oidc,xml-json-transformer
     secrets:
       - kong_postgres_password
     networks:
